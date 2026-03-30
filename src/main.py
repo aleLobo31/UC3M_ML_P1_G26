@@ -563,18 +563,32 @@ if btn_predict:
                 # FIX 3: Probabilidades reales del modelo
                 # =====================================================
                 try:
-                    if hasattr(modelo.model, "predict_proba"):
-                        proba = modelo.model.predict_proba(df_input)
-                    else:
-                        proba = modelo.predict_proba(df_input)
+                    # En Scikit-Learn pipelines, si el estimador final es un clasificador lineal 
+                    # como SVM o Ridge sin probability=True, predict_proba devuelve AttributeError.
+                    # En su lugar, usamos decision_function si existe y lo escalamos, o miramos el estimador real.
+                    
+                    estimador_final = modelo.model.steps[-1][1] if hasattr(modelo.model, "steps") else modelo.model
 
-                    if proba.shape[1] == 2:
-                        prob_no = proba[0][0] * 100
-                        prob_si = proba[0][1] * 100
-                    else:
-                        prob_si = max(proba[0]) * 100
+                    if hasattr(estimador_final, "predict_proba"):
+                        proba = modelo.predict_proba(df_input)
+                        if proba.shape[1] == 2:
+                            prob_no = proba[0][0] * 100
+                            prob_si = proba[0][1] * 100
+                        else:
+                            prob_si = max(proba[0]) * 100
+                            prob_no = 100 - prob_si
+                    elif hasattr(estimador_final, "decision_function"):
+                        import scipy.special
+                        decision = estimador_final.decision_function(modelo.model[:-1].transform(df_input))
+                        # Aplicar softmax o sigmoide
+                        prob_si = scipy.special.expit(decision[0]) * 100
                         prob_no = 100 - prob_si
-                except Exception:
+                    else:
+                        raise AttributeError("No hay métodos probabilísticos disponibles en el pipeline")
+
+                except Exception as e:
+                    import traceback
+                    # Opcionalmente, imprimir e para depuración: print("Error en predict_proba:", e)
                     prob_si = 100.0 if pred in ['yes', 1] else 0.0
                     prob_no = 100.0 if pred in ['no', 0] else 0.0
 
