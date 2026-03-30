@@ -587,7 +587,6 @@ if btn_predict:
                         raise AttributeError("No hay métodos probabilísticos disponibles en el pipeline")
 
                 except Exception as e:
-                    import traceback
                     # Opcionalmente, imprimir e para depuración: print("Error en predict_proba:", e)
                     prob_si = 100.0 if pred in ['yes', 1] else 0.0
                     prob_no = 100.0 if pred in ['no', 0] else 0.0
