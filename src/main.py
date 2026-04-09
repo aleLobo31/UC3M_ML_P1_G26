@@ -1,57 +1,37 @@
 import streamlit as st
 import pandas as pd
 import os
+import sys
 import random
-from model_strategy import JoblibModelStrategy
+import types
 import __main__
+from model_strategy import JoblibModelStrategy
+
+# Crear módulo ficticio 'src' que apunte a las funciones de utils
+src_module = types.ModuleType('src')
+src_module.Utils = sys.modules.get('Utils') or __import__('Utils')
+sys.modules['src'] = src_module
+sys.modules['src.Utils'] = src_module.Utils
 
 # --- Funciones de preprocesado requeridas por el Pipeline ---
-def pdays_transform(x):
-    if x == -1:
-        return 0
-    elif x < 100:
-        return 1
-    elif x < 200:
-        return 2
-    elif x < 400:
-        return 3
-    else:
-        return 4
-
-def process_pdays(X: pd.DataFrame) -> pd.DataFrame:
-    X_out = X.copy()
-    X_out['wasContacted'] = X_out['pdays'].map(lambda x: 0 if x == -1 else 1)
-    X_out['pdaysTransformed'] = X_out['pdays'].map(pdays_transform)
-    return X_out
-
-def calculate_propensity(row):
-    if row['poutcome'] != 'success':
-        return 0
-    elif row['pdays'] < 0:
-        return 0
-    else:
-        return 1/(1 + row['pdays'])
-
-def process_poutcome(X: pd.DataFrame) -> pd.DataFrame:
-    X_out = X.copy()
-    X_out['DepositPropensity'] = X_out[['poutcome', 'pdays']].apply(calculate_propensity, axis=1)
-    return X_out
-
-def process_marital(X):
-    X_out = X.copy()
-    X_out['marital'] = X_out['marital'].fillna('unknown')
-    return X_out
-
-def drop_columns(X):
-    return X.drop(['pdays'], axis=1, errors='ignore')
+from Utils import (
+    pdays_transform,
+    process_pdays,
+    calculate_propensity,
+    process_poutcome,
+    process_job,
+    drop_columns,
+    process_skewness  # si también la necesitas
+)
 
 # Vincularlas al módulo __main__ explícitamente para que joblib las encuentre
 __main__.pdays_transform = pdays_transform
 __main__.process_pdays = process_pdays
 __main__.calculate_propensity = calculate_propensity
 __main__.process_poutcome = process_poutcome
-__main__.process_marital = process_marital
+__main__.process_job = process_job
 __main__.drop_columns = drop_columns
+__main__.process_skewness = process_skewness
 
 # --- Configuración de página y estilos ---
 st.set_page_config(page_title="Predicción de Depósitos Bancarios", layout="wide", page_icon="🏦")
